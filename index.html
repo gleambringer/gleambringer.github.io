@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GleamBringer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-dark: #0a050f;
+            --bg-violet: #1a0b2e;
+            --theme-accent: #9d174d; /* Red-Violet */
+            --theme-glow: #701a75;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(circle at center, var(--bg-violet) 0%, var(--bg-dark) 100%);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: white;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .content {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            pointer-events: none;
+        }
+
+        .title {
+            font-size: 6rem;
+            font-weight: 800;
+            letter-spacing: -0.05em;
+            background: linear-gradient(to bottom, #ffffff, var(--theme-accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 20px rgba(157, 23, 77, 0.4));
+            margin-bottom: 0;
+            text-transform: lowercase;
+        }
+
+        .clock {
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 3rem;
+            letter-spacing: 0.2em;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 1.5rem;
+            pointer-events: auto;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 2rem;
+            border: 1px solid rgba(157, 23, 77, 0.4);
+            background: rgba(255, 255, 255, 0.03);
+            color: white;
+            border-radius: 9999px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            cursor: pointer;
+            outline: none;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: rgba(157, 23, 77, 0.2);
+            border-color: var(--theme-accent);
+            box-shadow: 0 0 15px rgba(157, 23, 77, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 2rem;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 10;
+            pointer-events: auto;
+        }
+
+        .footer-link {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            letter-spacing: 0.05em;
+        }
+
+        .footer-link:hover {
+            color: var(--theme-accent);
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="content">
+        <h1 class="title">gleam</h1>
+        <div id="clock" class="clock">00:00:00</div>
+        
+        <div class="button-container">
+            <a href="https://gleambringer.github.io/404.html" class="btn">Explore</a>
+            <a href="https://gleambringer.github.io/404.html" class="btn">Projects</a>
+            <a href="https://gleambringer.github.io/404.html" class="btn">Contact</a>
+        </div>
+    </div>
+
+    <div class="footer">
+        <a href="mailto:devastation-bringer@proton.me" class="footer-link">devastation-bringer@proton.me</a>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const clockElement = document.getElementById('clock');
+
+        let particles = [];
+        let mouse = { x: -100, y: -100 };
+
+        function initCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            clockElement.textContent = `${h}:${m}:${s}`;
+        }
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.4;
+                this.speedY = (Math.random() - 0.5) * 0.4;
+                this.color = Math.random() > 0.4 ? '#9d174d' : '#ffffff';
+                this.opacity = Math.random() * 0.4 + 0.1;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const forceArea = 180;
+
+                if (distance < forceArea) {
+                    const force = (forceArea - distance) / forceArea;
+                    const directionX = dx / distance;
+                    const directionY = dy / distance;
+                    this.x -= directionX * force * 3;
+                    this.y -= directionY * force * 3;
+                }
+
+                if (this.x < 0) this.x = canvas.width;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                if (this.y > canvas.height) this.y = 0;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.opacity;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function createParticles() {
+            // Increased density: from 10000 divisor to 4000
+            const count = (canvas.width * canvas.height) / 4000;
+            particles = [];
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            initCanvas();
+            createParticles();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        window.addEventListener('mouseout', () => {
+            mouse.x = -200;
+            mouse.y = -200;
+        });
+
+        window.onload = () => {
+            initCanvas();
+            createParticles();
+            animate();
+            setInterval(updateClock, 1000);
+            updateClock();
+        };
+    </script>
+</body>
+</html>
