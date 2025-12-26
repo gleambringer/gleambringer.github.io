@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entertainment | Gleam</title>
+    <link rel="icon" type="image/png" href="https://gleambringer.github.io/favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-dark: #0a0000;
+            --bg-red: #2a0505;
+            --theme-accent: #dc2626; /* Bright Red */
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(circle at center, var(--bg-red) 0%, var(--bg-dark) 100%);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: white;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .content {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            pointer-events: none;
+        }
+
+        .title {
+            font-size: 6rem;
+            font-weight: 800;
+            letter-spacing: -0.05em;
+            background: linear-gradient(to bottom, #ffffff, var(--theme-accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 20px rgba(220, 38, 38, 0.4));
+            margin-bottom: 3rem;
+            text-transform: lowercase;
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            pointer-events: auto;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            background: rgba(255, 255, 255, 0.03);
+            color: white;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background: rgba(220, 38, 38, 0.2);
+            border-color: var(--theme-accent);
+            box-shadow: 0 0 25px rgba(220, 38, 38, 0.4);
+            transform: scale(1.02);
+        }
+
+        .back-nav {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            z-index: 20;
+            pointer-events: auto;
+        }
+
+        .back-link {
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .back-link:hover {
+            color: white;
+        }
+
+        @media (max-width: 640px) {
+            .title { font-size: 3.5rem; }
+            .button-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <nav class="back-nav">
+        <a href="index.html" class="back-link">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            Home
+        </a>
+    </nav>
+
+    <div class="content">
+        <h1 class="title">Games</h1>
+        
+        <div class="button-grid">
+            <a href="#" class="btn" onclick="showNotice()">#</a>
+            <a href="#" class="btn" onclick="showNotice()">#</a>
+            <a href="#" class="btn" onclick="showNotice()">#</a>
+            <a href="#" class="btn" onclick="showNotice()">#</a>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let mouse = { x: -100, y: -100 };
+
+        function initCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = (Math.random() - 0.5) * 0.5;
+                this.color = Math.random() > 0.3 ? '#dc2626' : '#ffffff';
+                this.opacity = Math.random() * 0.5 + 0.1;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const forceArea = 200;
+
+                if (distance < forceArea) {
+                    const force = (forceArea - distance) / forceArea;
+                    this.x -= (dx / distance) * force * 4;
+                    this.y -= (dy / distance) * force * 4;
+                }
+
+                if (this.x < 0) this.x = canvas.width;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                if (this.y > canvas.height) this.y = 0;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.opacity;
+                ctx.fill();
+            }
+        }
+
+        function createParticles() {
+            const count = (canvas.width * canvas.height) / 4500;
+            particles = [];
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        function showNotice() {
+            // Simplified feedback for button clicks
+            console.log("Navigating...");
+        }
+
+        window.addEventListener('resize', () => {
+            initCanvas();
+            createParticles();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        window.onload = () => {
+            initCanvas();
+            createParticles();
+            animate();
+        };
+    </script>
+</body>
+</html>
