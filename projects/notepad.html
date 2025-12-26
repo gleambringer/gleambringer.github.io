@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notepad | Gleam</title>
+    <link rel="icon" type="image/png" href="https://gleambringer.github.io/favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-dark: #0a050f;
+            --bg-violet: #1a0b2e;
+            --theme-accent: #9d174d;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(circle at center, var(--bg-violet) 0%, var(--bg-dark) 100%);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: white;
+        }
+
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .content {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 1.5rem;
+            box-sizing: border-box;
+        }
+
+        .notepad-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(157, 23, 77, 0.3);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Tabs Section */
+        .tabs-bar {
+            display: flex;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.5rem 0.5rem 0 0.5rem;
+            gap: 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 0.6rem 1.2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px 12px 0 0;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .tab.active {
+            background: rgba(157, 23, 77, 0.2);
+            border: 1px solid rgba(157, 23, 77, 0.4);
+            border-bottom: none;
+            color: white;
+        }
+
+        .new-tab-btn {
+            padding: 0.6rem;
+            cursor: pointer;
+            color: var(--theme-accent);
+            display: flex;
+            align-items: center;
+        }
+
+        /* Toolbar Section */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            align-items: center;
+        }
+
+        .tool-group {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding-right: 12px;
+        }
+
+        .tool-group:last-child { border-right: none; }
+
+        .tool-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.2s;
+        }
+
+        .tool-btn:hover { background: var(--theme-accent); }
+
+        select, input[type="color"] {
+            background: #2a1b3d;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 6px;
+            padding: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        /* Editor Section */
+        #editor {
+            flex-grow: 1;
+            padding: 2rem;
+            outline: none;
+            overflow-y: auto;
+            color: white;
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+
+        #editor mark {
+            background-color: #ff0;
+            color: #000;
+            border-radius: 2px;
+            padding: 0 2px;
+        }
+
+        .back-nav {
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .back-link {
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .back-link:hover { color: white; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(157, 23, 77, 0.5); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="content">
+        <nav class="back-nav">
+            <a href="index.html" class="back-link">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                Home
+            </a>
+            <span style="color: var(--theme-accent); font-weight: 700; letter-spacing: 2px; text-transform: uppercase; font-size: 0.7rem;">Notepad Engine v1.0</span>
+        </nav>
+
+        <div class="notepad-container">
+            <div class="tabs-bar" id="tabsBar">
+                <!-- Tabs injected by JS -->
+                <div class="new-tab-btn" onclick="createNewTab()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="tool-group">
+                    <select onchange="execCommand('fontName', this.value)">
+                        <option value="Inter">Default (Inter)</option>
+                        <option value="serif">Serif</option>
+                        <option value="monospace">Monospace</option>
+                        <option value="cursive">Cursive</option>
+                    </select>
+                </div>
+
+                <div class="tool-group">
+                    <button class="tool-btn" onclick="execCommand('bold')">B</button>
+                    <button class="tool-btn" onclick="execCommand('italic')">I</button>
+                    <button class="tool-btn" onclick="execCommand('underline')">U</button>
+                </div>
+
+                <div class="tool-group">
+                    <label class="text-xs opacity-50 mr-1">Text</label>
+                    <input type="color" onchange="execCommand('foreColor', this.value)" value="#ffffff">
+                    <label class="text-xs opacity-50 mr-1 ml-2">Highlight</label>
+                    <input type="color" onchange="execCommand('hiliteColor', this.value)" value="#ffff00">
+                </div>
+
+                <div class="tool-group">
+                    <button class="tool-btn" onclick="exportData()">Export JSON</button>
+                    <button class="tool-btn" onclick="triggerImport()">Import JSON</button>
+                    <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
+                </div>
+            </div>
+
+            <div id="editor" contenteditable="true" spellcheck="false"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- BACKGROUND PARTICLES ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let mouse = { x: -100, y: -100 };
+
+        function initCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.4;
+                this.speedY = (Math.random() - 0.5) * 0.4;
+                this.color = Math.random() > 0.4 ? '#9d174d' : '#ffffff';
+                this.opacity = Math.random() * 0.4 + 0.1;
+            }
+            update() {
+                this.x += this.speedX; this.y += this.speedY;
+                const dx = mouse.x - this.x; const dy = mouse.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 180) {
+                    const force = (180 - distance) / 180;
+                    this.x -= (dx / distance) * force * 3;
+                    this.y -= (dy / distance) * force * 3;
+                }
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.opacity;
+                ctx.fill();
+            }
+        }
+
+        function createParticles() {
+            const count = (canvas.width * canvas.height) / 5000;
+            particles = [];
+            for (let i = 0; i < count; i++) particles.push(new Particle());
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animate);
+        }
+
+        // --- NOTEPAD LOGIC ---
+        const editor = document.getElementById('editor');
+        const tabsBar = document.getElementById('tabsBar');
+        let state = {
+            tabs: JSON.parse(localStorage.getItem('gleam_notes')) || [
+                { id: Date.now(), title: 'Draft 1', content: 'Welcome to your notepad...' }
+            ],
+            activeTabId: null
+        };
+
+        function save() {
+            const activeTab = state.tabs.find(t => t.id === state.activeTabId);
+            if (activeTab) activeTab.content = editor.innerHTML;
+            localStorage.setItem('gleam_notes', JSON.stringify(state.tabs));
+        }
+
+        function renderTabs() {
+            const plusBtn = tabsBar.querySelector('.new-tab-btn');
+            tabsBar.innerHTML = '';
+            state.tabs.forEach(tab => {
+                const tabEl = document.createElement('div');
+                tabEl.className = `tab ${tab.id === state.activeTabId ? 'active' : ''}`;
+                tabEl.innerHTML = `
+                    <span onclick="switchTab(${tab.id})">${tab.title}</span>
+                    <small onclick="deleteTab(${tab.id})" style="opacity: 0.5; font-size: 10px;">✕</small>
+                `;
+                tabsBar.appendChild(tabEl);
+            });
+            tabsBar.appendChild(plusBtn);
+        }
+
+        function switchTab(id) {
+            save(); // Save current before switching
+            state.activeTabId = id;
+            const tab = state.tabs.find(t => t.id === id);
+            editor.innerHTML = tab ? tab.content : '';
+            renderTabs();
+        }
+
+        function createNewTab() {
+            const newTab = {
+                id: Date.now(),
+                title: `Note ${state.tabs.length + 1}`,
+                content: ''
+            };
+            state.tabs.push(newTab);
+            switchTab(newTab.id);
+        }
+
+        function deleteTab(id) {
+            if (state.tabs.length <= 1) return;
+            state.tabs = state.tabs.filter(t => t.id !== id);
+            if (state.activeTabId === id) switchTab(state.tabs[0].id);
+            else renderTabs();
+            save();
+        }
+
+        function execCommand(command, value = null) {
+            document.execCommand(command, false, value);
+            editor.focus();
+        }
+
+        // --- DATA MGMT ---
+        function exportData() {
+            save();
+            const blob = new Blob([JSON.stringify(state.tabs)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'gleam_notes_backup.json';
+            a.click();
+        }
+
+        function triggerImport() {
+            document.getElementById('importFile').click();
+        }
+
+        function importData(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    if (Array.isArray(data)) {
+                        state.tabs = data;
+                        switchTab(data[0].id);
+                        save();
+                    }
+                } catch (err) {
+                    console.error("Invalid JSON file");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Initialization
+        window.addEventListener('resize', () => { initCanvas(); createParticles(); });
+        window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        editor.addEventListener('input', save);
+
+        window.onload = () => {
+            initCanvas();
+            createParticles();
+            animate();
+            state.activeTabId = state.tabs[0].id;
+            switchTab(state.activeTabId);
+        };
+    </script>
+</body>
+</html>
