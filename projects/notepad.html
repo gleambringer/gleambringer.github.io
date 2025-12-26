@@ -85,6 +85,11 @@
             color: white;
         }
 
+        .tab-title {
+            outline: none;
+            cursor: text;
+        }
+
         .new-tab-btn {
             padding: 0.6rem;
             cursor: pointer;
@@ -148,13 +153,6 @@
             font-size: 1.1rem;
         }
 
-        #editor mark {
-            background-color: #ff0;
-            color: #000;
-            border-radius: 2px;
-            padding: 0 2px;
-        }
-
         .back-nav {
             margin-bottom: 1rem;
             display: flex;
@@ -174,6 +172,20 @@
 
         .back-link:hover { color: white; }
 
+        /* Custom UI Notification */
+        #status-msg {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--theme-accent);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 100;
+        }
+
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: rgba(157, 23, 77, 0.5); border-radius: 10px; }
     </style>
@@ -181,6 +193,7 @@
 <body>
 
     <canvas id="canvas"></canvas>
+    <div id="status-msg"></div>
 
     <div class="content">
         <nav class="back-nav">
@@ -188,7 +201,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 Home
             </a>
-            <span style="color: var(--theme-accent); font-weight: 700; letter-spacing: 2px; text-transform: uppercase; font-size: 0.7rem;">Notepad Engine v1.0</span>
+            <span style="color: var(--theme-accent); font-weight: 700; letter-spacing: 2px; text-transform: uppercase; font-size: 0.7rem;">Notepad Engine v1.1</span>
         </nav>
 
         <div class="notepad-container">
@@ -201,7 +214,7 @@
 
             <div class="toolbar">
                 <div class="tool-group">
-                    <select onchange="execCommand('fontName', this.value)">
+                    <select onchange="applyCommand('fontName', this.value)">
                         <option value="Inter">Default (Inter)</option>
                         <option value="serif">Serif</option>
                         <option value="monospace">Monospace</option>
@@ -210,16 +223,16 @@
                 </div>
 
                 <div class="tool-group">
-                    <button class="tool-btn" onclick="execCommand('bold')">B</button>
-                    <button class="tool-btn" onclick="execCommand('italic')">I</button>
-                    <button class="tool-btn" onclick="execCommand('underline')">U</button>
+                    <button class="tool-btn" onclick="applyCommand('bold')">B</button>
+                    <button class="tool-btn" onclick="applyCommand('italic')">I</button>
+                    <button class="tool-btn" onclick="applyCommand('underline')">U</button>
                 </div>
 
                 <div class="tool-group">
                     <label class="text-xs opacity-50 mr-1">Text</label>
-                    <input type="color" onchange="execCommand('foreColor', this.value)" value="#ffffff">
+                    <input type="color" oninput="applyCommand('foreColor', this.value)" value="#ffffff">
                     <label class="text-xs opacity-50 mr-1 ml-2">Highlight</label>
-                    <input type="color" onchange="execCommand('hiliteColor', this.value)" value="#ffff00">
+                    <input type="color" oninput="applyCommand('hiliteColor', this.value)" value="#ffff00">
                 </div>
 
                 <div class="tool-group">
@@ -291,12 +304,20 @@
         // --- NOTEPAD LOGIC ---
         const editor = document.getElementById('editor');
         const tabsBar = document.getElementById('tabsBar');
+        const statusMsg = document.getElementById('status-msg');
+        
         let state = {
             tabs: JSON.parse(localStorage.getItem('gleam_notes')) || [
                 { id: Date.now(), title: 'Draft 1', content: 'Welcome to your notepad...' }
             ],
             activeTabId: null
         };
+
+        function showStatus(msg) {
+            statusMsg.textContent = msg;
+            statusMsg.style.opacity = '1';
+            setTimeout(() => statusMsg.style.opacity = '0', 2000);
+        }
 
         function save() {
             const activeTab = state.tabs.find(t => t.id === state.activeTabId);
@@ -311,16 +332,29 @@
                 const tabEl = document.createElement('div');
                 tabEl.className = `tab ${tab.id === state.activeTabId ? 'active' : ''}`;
                 tabEl.innerHTML = `
-                    <span onclick="switchTab(${tab.id})">${tab.title}</span>
-                    <small onclick="deleteTab(${tab.id})" style="opacity: 0.5; font-size: 10px;">✕</small>
+                    <span contenteditable="true" class="tab-title" onblur="renameTab(${tab.id}, this.textContent)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${tab.title}</span>
+                    <small onclick="event.stopPropagation(); deleteTab(${tab.id})" style="opacity: 0.5; font-size: 10px; margin-left: 8px;">✕</small>
                 `;
+                tabEl.onclick = (e) => {
+                    if (e.target.classList.contains('tab-title')) return;
+                    switchTab(tab.id);
+                };
                 tabsBar.appendChild(tabEl);
             });
             tabsBar.appendChild(plusBtn);
         }
 
+        function renameTab(id, newTitle) {
+            const tab = state.tabs.find(t => t.id === id);
+            if (tab) {
+                tab.title = newTitle.trim() || 'Untitled';
+                save();
+                renderTabs();
+            }
+        }
+
         function switchTab(id) {
-            save(); // Save current before switching
+            save(); // Save current state
             state.activeTabId = id;
             const tab = state.tabs.find(t => t.id === id);
             editor.innerHTML = tab ? tab.content : '';
@@ -335,19 +369,25 @@
             };
             state.tabs.push(newTab);
             switchTab(newTab.id);
+            save(); // Ensure new tab is recorded immediately
         }
 
         function deleteTab(id) {
-            if (state.tabs.length <= 1) return;
+            if (state.tabs.length <= 1) {
+                showStatus("At least one tab must remain.");
+                return;
+            }
             state.tabs = state.tabs.filter(t => t.id !== id);
             if (state.activeTabId === id) switchTab(state.tabs[0].id);
             else renderTabs();
             save();
         }
 
-        function execCommand(command, value = null) {
-            document.execCommand(command, false, value);
+        function applyCommand(command, value = null) {
+            // Fix: ensure editor is focused and we use the correct command context
             editor.focus();
+            document.execCommand(command, false, value);
+            save();
         }
 
         // --- DATA MGMT ---
@@ -359,6 +399,7 @@
             a.href = url;
             a.download = 'gleam_notes_backup.json';
             a.click();
+            showStatus("Notes exported as JSON");
         }
 
         function triggerImport() {
@@ -374,11 +415,13 @@
                     const data = JSON.parse(event.target.result);
                     if (Array.isArray(data)) {
                         state.tabs = data;
+                        state.activeTabId = data[0].id;
                         switchTab(data[0].id);
                         save();
+                        showStatus("Notes imported successfully");
                     }
                 } catch (err) {
-                    console.error("Invalid JSON file");
+                    showStatus("Error: Invalid JSON file");
                 }
             };
             reader.readAsText(file);
@@ -387,14 +430,29 @@
         // Initialization
         window.addEventListener('resize', () => { initCanvas(); createParticles(); });
         window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        
+        // Auto-save on every edit
         editor.addEventListener('input', save);
 
         window.onload = () => {
             initCanvas();
             createParticles();
             animate();
-            state.activeTabId = state.tabs[0].id;
-            switchTab(state.activeTabId);
+            
+            // Fix for the initial Draft 1 save issue: 
+            // Ensure we use the existing state from localStorage if available
+            if (state.tabs.length > 0) {
+                state.activeTabId = state.tabs[0].id;
+                editor.innerHTML = state.tabs[0].content;
+            }
+            
+            renderTabs();
+            
+            // Check if user has seen the "Draft 1" notice
+            if (!localStorage.getItem('gleam_welcome_seen')) {
+                showStatus("Note: 'Draft 1' is saved locally. Click tab titles to rename!");
+                localStorage.setItem('gleam_welcome_seen', 'true');
+            }
         };
     </script>
 </body>
