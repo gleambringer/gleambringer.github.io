@@ -2,6 +2,7 @@
 "games": [
 "snake",
 "ragdoll-archers",
+"gleam-devour-multiplayer",
 "btts"
 ]
 }
