@@ -12,6 +12,7 @@
             --bg-violet: #1a0b2e;
             --theme-accent: #9d174d;
             --connection-red: #ff1a1a;
+            --clock-green: #00ff41;
         }
 
         body, html {
@@ -43,19 +44,22 @@
             pointer-events: none;
         }
 
-        .top-info {
+        .top-right-ui {
             position: absolute;
             top: 2rem;
             right: 2.5rem;
+            z-index: 20;
             text-align: right;
-            pointer-events: auto;
+            pointer-events: none;
         }
 
-        #clock {
-            font-size: 1.2rem;
-            font-weight: 300;
+        #digital-clock {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--clock-green);
+            text-shadow: 0 0 10px var(--clock-green), 0 0 20px rgba(0, 255, 65, 0.5);
             letter-spacing: 2px;
-            color: rgba(255, 255, 255, 0.7);
         }
 
         .title {
@@ -66,9 +70,20 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             filter: drop-shadow(0 0 30px rgba(157, 23, 77, 0.6));
-            margin-bottom: 2rem;
+            margin-bottom: 0.5rem;
             text-transform: lowercase;
             animation: pulse 4s ease-in-out infinite;
+        }
+
+        #random-phrases {
+            height: 1.5rem;
+            font-size: 0.9rem;
+            color: var(--clock-green);
+            text-shadow: 0 0 5px var(--clock-green);
+            letter-spacing: 0.2em;
+            margin-bottom: 2rem;
+            text-transform: lowercase;
+            transition: opacity 0.5s ease;
         }
 
         @keyframes pulse {
@@ -106,7 +121,7 @@
         @media (max-width: 640px) {
             .title { font-size: 4rem; }
             .button-group { flex-direction: column; gap: 1rem; align-items: center; }
-            .top-info { top: 1rem; right: 1rem; }
+            .top-right-ui { top: 1rem; right: 1.5rem; }
         }
     </style>
 </head>
@@ -114,12 +129,13 @@
 
     <canvas id="canvas"></canvas>
 
-    <div class="top-info">
-        <div id="clock">00:00:00</div>
+    <div class="top-right-ui">
+        <div id="digital-clock">00:00:00</div>
     </div>
 
     <div class="content">
         <h1 class="title">gleam</h1>
+        <div id="random-phrases">ajs;dfk</div>
         
         <div class="button-group">
             <a href="/about" class="btn">About</a>
@@ -135,10 +151,23 @@
         let orbs = [];
         let mouse = { x: -1000, y: -1000 };
 
+        const phrases = ["Welcome to gleam", "Try clicking anywhere on the screen", "check out odious-mist-links.deno.dev", "We'd put a sack over your head to cover your ugliness, but there weren't any sacks that volunteered", "Your face defies description, but only because no writer would look at it long enough to describe it", "ow", "quote my friend: why am i the only naked person at this gender reveal party?", "delicious", "why doesn't the school shooter just pull the fire alarm? send us an email with the answer", "adflkasjdf;ihwoirhfoijfijals;kdjfwrhfodhjakfl;jsdkf"];
+        
+        // Phrase cycling
+        setInterval(() => {
+            const phraseEl = document.getElementById('random-phrases');
+            phraseEl.style.opacity = 0;
+            setTimeout(() => {
+                phraseEl.textContent = phrases[Math.floor(Math.random() * phrases.length)];
+                phraseEl.style.opacity = 1;
+            }, 500);
+        }, 2000);
+
+        // Digital Clock update
         function updateClock() {
             const now = new Date();
             const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
-            document.getElementById('clock').textContent = timeStr;
+            document.getElementById('digital-clock').textContent = timeStr;
         }
         setInterval(updateClock, 1000);
         updateClock();
@@ -149,10 +178,7 @@
         }
 
         class Particle {
-            constructor() {
-                this.reset();
-            }
-
+            constructor() { this.reset(); }
             reset() {
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height;
@@ -161,14 +187,10 @@
                 this.speedY = (Math.random() - 0.5) * 0.6;
                 this.color = Math.random() > 0.4 ? '#9d174d' : '#ffffff';
                 this.opacity = Math.random() * 0.5 + 0.3; 
-                this.baseOpacity = this.opacity;
             }
-
             update() {
                 this.x += this.speedX;
                 this.y += this.speedY;
-
-                // Mouse Repulsion
                 const dx = mouse.x - this.x;
                 const dy = mouse.y - this.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
@@ -177,8 +199,6 @@
                     this.x -= (dx / distance) * force * 3;
                     this.y -= (dy / distance) * force * 3;
                 }
-
-                // Orb Attraction
                 orbs.forEach(orb => {
                     const odx = orb.x - this.x;
                     const ody = orb.y - this.y;
@@ -189,13 +209,11 @@
                         this.y += (ody / oDist) * oForce * 6;
                     }
                 });
-
                 if (this.x < 0) this.x = canvas.width;
                 if (this.x > canvas.width) this.x = 0;
                 if (this.y < 0) this.y = canvas.height;
                 if (this.y > canvas.height) this.y = 0;
             }
-
             draw() {
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -207,25 +225,21 @@
 
         class Orb {
             constructor(x, y) {
-                this.x = x;
-                this.y = y;
+                this.x = x; this.y = y;
                 this.startTime = Date.now();
-                this.duration = 2000;
-                this.opacity = 1;
+                this.duration = 5000;
             }
-            update() {
-                const elapsed = Date.now() - this.startTime;
-                this.opacity = 1 - (elapsed / this.duration);
-                return elapsed < this.duration;
-            }
+            update() { return Date.now() - this.startTime < this.duration; }
             draw() {
+                const elapsed = Date.now() - this.startTime;
+                const op = 1 - (elapsed / this.duration);
                 ctx.save();
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, 8, 0, Math.PI * 2);
                 ctx.fillStyle = '#ffffff';
                 ctx.shadowBlur = 20;
                 ctx.shadowColor = '#ffffff';
-                ctx.globalAlpha = this.opacity;
+                ctx.globalAlpha = op;
                 ctx.fill();
                 ctx.restore();
             }
@@ -234,26 +248,21 @@
         function createParticles() {
             const count = (canvas.width * canvas.height) / 3000;
             particles = [];
-            for (let i = 0; i < count; i++) {
-                particles.push(new Particle());
-            }
+            for (let i = 0; i < count; i++) particles.push(new Particle());
         }
 
         function drawConnections() {
-            const maxDist = 100;
             for (let i = 0; i < particles.length; i++) {
                 for (let j = i + 1; j < particles.length; j++) {
                     const dx = particles[i].x - particles[j].x;
                     const dy = particles[i].y - particles[j].y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    if (distance < maxDist) {
-                        const opacity = 1 - (distance / maxDist);
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 100) {
                         ctx.beginPath();
                         ctx.moveTo(particles[i].x, particles[i].y);
                         ctx.lineTo(particles[j].x, particles[j].y);
-                        ctx.strokeStyle = '#ff1a1a'; // Bright red connections
-                        ctx.globalAlpha = opacity * 0.4;
+                        ctx.strokeStyle = '#ff1a1a';
+                        ctx.globalAlpha = (1 - (dist / 100)) * 0.4;
                         ctx.lineWidth = 0.8;
                         ctx.stroke();
                     }
@@ -263,39 +272,19 @@
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw connections first (behind particles)
             drawConnections();
-
-            // Update and draw orbs
             orbs = orbs.filter(orb => {
                 const alive = orb.update();
                 if (alive) orb.draw();
                 return alive;
             });
-
-            // Update and draw particles
-            particles.forEach(p => {
-                p.update();
-                p.draw();
-            });
-            
+            particles.forEach(p => { p.update(); p.draw(); });
             requestAnimationFrame(animate);
         }
 
-        window.addEventListener('resize', () => {
-            initCanvas();
-            createParticles();
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            mouse.x = e.clientX;
-            mouse.y = e.clientY;
-        });
-
-        window.addEventListener('mousedown', (e) => {
-            orbs.push(new Orb(e.clientX, e.clientY));
-        });
+        window.addEventListener('resize', () => { initCanvas(); createParticles(); });
+        window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        window.addEventListener('mousedown', (e) => orbs.push(new Orb(e.clientX, e.clientY)));
 
         window.onload = () => {
             initCanvas();
