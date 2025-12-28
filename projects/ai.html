@@ -1,1 +1,218 @@
-#indev
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GleamAI | Sentient Interface</title>
+    <link rel="icon" type="image/png" href="https://gleambringer.github.io/favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-dark: #0a050f;
+            --bg-violet: #1a0b2e;
+            --theme-accent: #9d174d;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* The Fullscreen Container */
+        .viewport-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            background: var(--bg-dark);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Immersive Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, var(--bg-violet) 0%, var(--bg-dark) 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), visibility 1s;
+        }
+
+        .loader-ring {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin-bottom: 2rem;
+        }
+
+        .loader-ring div {
+            box-sizing: border-box;
+            display: block;
+            position: absolute;
+            width: 64px;
+            height: 64px;
+            margin: 8px;
+            border: 3px solid transparent;
+            border-radius: 50%;
+            animation: ring-rotate 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+            border-top-color: var(--theme-accent);
+        }
+
+        .loader-ring div:nth-child(1) { animation-delay: -0.45s; }
+        .loader-ring div:nth-child(2) { animation-delay: -0.3s; }
+        .loader-ring div:nth-child(3) { animation-delay: -0.15s; }
+
+        @keyframes ring-rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-container {
+            text-align: center;
+        }
+
+        .loading-text {
+            color: white;
+            letter-spacing: 0.4em;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        .progress-bar {
+            width: 120px;
+            height: 1px;
+            background: rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: var(--theme-accent);
+            transition: width 0.5s ease;
+        }
+
+        /* Quick Exit / Back Button */
+        .back-nav {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 150;
+            opacity: 0.3;
+            transition: opacity 0.3s ease;
+        }
+
+        .back-nav:hover {
+            opacity: 1;
+        }
+
+        .exit-link {
+            color: white;
+            text-decoration: none;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div class="loading-overlay" id="loading-screen">
+        <div class="loader-ring"><div></div><div></div><div></div><div></div></div>
+        <div class="status-container">
+            <div class="loading-text" id="status-label">Initializing GleamAI</div>
+            <div class="progress-bar"><div class="progress-fill" id="progress-bar"></div></div>
+        </div>
+    </div>
+
+    <!-- The Chat Frame -->
+    <div class="viewport-wrapper">
+        <iframe 
+            src="https://gleamchat.onrender.com" 
+            id="main-frame"
+            allow="autoplay; clipboard-write; encrypted-media"
+            title="GleamAI Terminal">
+        </iframe>
+    </div>
+
+    <!-- Minimal Back Button -->
+    <nav class="back-nav">
+        <a href="projects.html" class="exit-link">Terminate Session & Return</a>
+    </nav>
+
+    <script>
+        const iframe = document.getElementById('main-frame');
+        const loader = document.getElementById('loading-screen');
+        const statusLabel = document.getElementById('status-label');
+        const progressBar = document.getElementById('progress-bar');
+
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            if (progress < 90) {
+                progress += Math.random() * 5;
+                progressBar.style.width = progress + '%';
+            }
+        }, 400);
+
+        // Success Handler
+        iframe.onload = function() {
+            clearInterval(progressInterval);
+            progressBar.style.width = '100%';
+            statusLabel.textContent = "Link Established";
+            
+            setTimeout(() => {
+                loader.style.opacity = '0';
+                loader.style.visibility = 'hidden';
+            }, 800);
+        };
+
+        // Render Spin-up detection
+        setTimeout(() => {
+            if (loader.style.visibility !== 'hidden') {
+                statusLabel.textContent = "Waking Server (Render Spin-up)";
+            }
+        }, 6000);
+
+        // Basic Security / Interaction
+        window.addEventListener('message', (event) => {
+            // Placeholder for potential iframe-to-parent communication
+            console.log("Transmission received from Gleam Core");
+        });
+    </script>
+</body>
+</html>
