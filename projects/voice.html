@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Voice Reader</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--card);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            color: var(--primary);
+            text-align: center;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #4b5563;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 120px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            border-color: var(--primary);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .control-item span {
+            display: block;
+            font-size: 0.8rem;
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .btn-speak {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: background 0.2s;
+        }
+
+        .btn-speak:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-speak:active {
+            transform: scale(0.98);
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #9ca3af;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Custom Voice Reader</h1>
+    
+    <div class="input-group">
+        <label for="text-input">What should I say?</label>
+        <textarea id="text-input" placeholder="Type words or sentences here..."></textarea>
+    </div>
+
+    <div class="controls">
+        <div class="control-item">
+            <label>Speed (Rate)</label>
+            <input type="range" id="rate" min="0.1" max="2" step="0.1" value="1">
+            <span id="rate-val">1.0</span>
+        </div>
+        <div class="control-item">
+            <label>Pitch</label>
+            <input type="range" id="pitch" min="0" max="2" step="0.1" value="1">
+            <span id="pitch-val">1.0</span>
+        </div>
+    </div>
+
+    <button class="btn-speak" onclick="speakText()">
+        <span>🔊</span> Speak Now
+    </button>
+
+    <div id="status" class="status"></div>
+</div>
+
+<script>
+    const rateInput = document.getElementById('rate');
+    const pitchInput = document.getElementById('pitch');
+    const rateVal = document.getElementById('rate-val');
+    const pitchVal = document.getElementById('pitch-val');
+    const textInput = document.getElementById('text-input');
+    const status = document.getElementById('status');
+
+    // Update labels when sliders move
+    rateInput.oninput = () => rateVal.textContent = parseFloat(rateInput.value).toFixed(1);
+    pitchInput.oninput = () => pitchVal.textContent = parseFloat(pitchInput.value).toFixed(1);
+
+    function speakText() {
+        const text = textInput.value.trim();
+        
+        if (text === "") {
+            status.textContent = "Please enter some text first!";
+            setTimeout(() => status.textContent = "", 2000);
+            return;
+        }
+
+        // Cancel any current speech
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Set the custom settings
+        utterance.rate = rateInput.value;
+        utterance.pitch = pitchInput.value;
+        
+        utterance.onstart = () => {
+            status.textContent = "Speaking...";
+        };
+        
+        utterance.onend = () => {
+            status.textContent = "Finished!";
+            setTimeout(() => status.textContent = "", 1500);
+        };
+
+        window.speechSynthesis.speak(utterance);
+    }
+</script>
+
+</body>
+</html>
